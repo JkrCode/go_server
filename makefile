@@ -1,10 +1,10 @@
 # Makefile
 
 # Define the name of the binary
-BINARY_NAME=app
+BINARY_NAME=out
 
 # Define the source files
-SOURCES=main.go headers.go readiness.go reset.go
+SOURCES=main.go headers.go readiness.go reset.go metrics.go
 
 # Define the build command
 build:
