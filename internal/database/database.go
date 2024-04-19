@@ -5,6 +5,8 @@ import (
 	"errors"
 	"os"
 	"sync"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 var ErrNotExist = errors.New("resource does not exist")
@@ -16,11 +18,18 @@ type DB struct {
 
 type DBStructure struct {
 	Chirps map[int]Chirp `json:"chirps"`
+	Users map[int]User `json:"users"`
 }
 
 type Chirp struct {
 	ID   int    `json:"id"`
 	Body string `json:"body"`
+}
+
+type User struct {
+	ID   int    `json:"id"`
+	Email string `json:"email"`
+	Password string `json:password`
 }
 
 func NewDB(path string) (*DB, error) {
@@ -37,6 +46,7 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	if err != nil {
 		return Chirp{}, err
 	}
+	
 
 	id := len(dbStructure.Chirps) + 1
 	chirp := Chirp{
@@ -51,6 +61,33 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 	}
 
 	return chirp, nil
+}
+
+func (db *DB) CreateUser(email string, password string) (User, error){
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return User{}, err
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+    if err != nil {
+        return User{}, err
+    }
+
+	id := len(dbStructure.Users) + 1
+	user := User{
+		ID:   id,
+		Email: email,
+		Password: string(hashedPassword),
+	}
+	dbStructure.Users[id] = user
+
+	err = db.writeDB(dbStructure)
+	if err != nil {
+		return User{}, err
+	}
+
+	return user, nil
 }
 
 func (db *DB) GetChirps() ([]Chirp, error) {
@@ -80,10 +117,27 @@ func (db *DB) GetChirp(id int) (Chirp, error) {
 	return chirp, nil
 }
 
+func (db *DB) GetUser(email string) User{
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return User{}
+	}
+	var userWithMail User
+	users := dbStructure.Users
+	for _,user := range users {
+		if user.Email == email {
+			userWithMail = user
+			return userWithMail
+		} 
+	}
+	return User{}
+}
+
 
 func (db *DB) createDB() error {
 	dbStructure := DBStructure{
 		Chirps: map[int]Chirp{},
+		Users: map[int]User{},
 	}
 	return db.writeDB(dbStructure)
 }
